@@ -26,13 +26,23 @@ jobs:
       # GitHub이 가끔 기여 데이터를 늦게 줘서 실패하면 잠깐 쉬고 한 번 더 그린다.
       - if: steps.first.outcome == 'failure'
         run: sleep 30
-      - if: steps.first.outcome == 'failure'
+      - id: second
+        if: steps.first.outcome == 'failure'
+        continue-on-error: true
         uses: Platane/snk/svg-only@v3
         with:
           github_user_name: ${{ github.repository_owner }}
           outputs: |
             dist/snake.svg?color_snake=#156B67&color_dots=#EBE3D6,#BFE3DF,#7FC4BD,#3E9A93,#156B67
             dist/snake-dark.svg?palette=github-dark&color_snake=#F07A72
+      # 두 번 다 실패하면 지난번 뱀 그림을 그대로 둔다(배포가 output 브랜치를 통째로 바꾸므로).
+      - name: 지난 뱀 그림 이어 쓰기
+        if: steps.first.outcome == 'failure' && steps.second.outcome == 'failure'
+        run: |
+          mkdir -p dist
+          for f in snake.svg snake-dark.svg; do
+            curl -fsSL "https://raw.githubusercontent.com/${{ github.repository }}/output/$f" -o "dist/$f" || true
+          done
       # 바깥 서비스 없이 잔디를 읽어 통계 카드를 직접 그린다.
       - name: 통계 카드 그리기
         run: |
